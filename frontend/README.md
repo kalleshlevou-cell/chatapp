@@ -61,7 +61,16 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/m
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-### Deployment
+## Deployment
+
+Deploy the `frontend` directory as a Vercel project with these settings:
+
+- Build command: `npm run build`
+- Output directory: `build`
+- `REACT_APP_API_URL`: `https://chatapp-hqgv.onrender.com/api`
+- `REACT_APP_SOCKET_URL`: `https://chatapp-hqgv.onrender.com`
+
+The Vercel project can use the included `vercel.json` for SPA route rewrites. Set the variables for Production, Preview, and Development as needed, then redeploy after changing them.
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 

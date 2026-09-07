@@ -11,24 +11,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchMe();
-    } else {
+    if (!token) {
       setLoading(false);
+      return;
     }
-  }, [token]);
 
-  const fetchMe = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/auth/me`);
-      setUser(res.data);
-    } catch {
-      logout();
-    } finally {
-      setLoading(false);
-    }
-  };
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const fetchMe = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/auth/me`);
+        setUser(res.data);
+      } catch {
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMe();
+  }, [token]);
 
   const register = async (username, email, password) => {
     const res = await axios.post(`${API_URL}/auth/register`, { username, email, password });
