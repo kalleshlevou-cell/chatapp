@@ -12,9 +12,16 @@ const { handleSocketEvents } = require('./socket/socketHandler');
 const app = express();
 const server = http.createServer(app);
 
+// Allow multiple origins: local dev + Vercel production
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:3000',
+  'http://localhost:3000',
+  /\.vercel\.app$/,   // any *.vercel.app subdomain
+];
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -24,7 +31,7 @@ const io = new Server(server, {
 connectDB();
 
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
 
 // REST Routes
