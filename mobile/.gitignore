@@ -1,0 +1,11 @@
+node_modules/
+.gradle/
+local.properties
+*.keystore
+!debug.keystore
+android/.gradle
+android/app/build/
+android/build/
+ios/build/
+*.log
+.env

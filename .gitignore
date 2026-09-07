@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Environment variables (keep .env.example, ignore actual .env)
+.env
+.env.local
+.env.production
+
+# Build output
+frontend/build/
+mobile/android/app/build/
+mobile/android/build/
+mobile/android/.gradle/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# React Native
+mobile/android/local.properties
+mobile/*.keystore
+!mobile/android/app/debug.keystore

@@ -1,0 +1,16 @@
+pluginManagement {
+    includeBuild("../node_modules/@react-native/gradle-plugin")
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id("de.fayard.refreshVersions") version "0.51.0"
+}
+
+rootProject.name = 'ChatAppMobile'
+include ':app'
+includeBuild('../node_modules/@react-native/gradle-plugin')
