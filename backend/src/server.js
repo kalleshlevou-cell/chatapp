@@ -16,7 +16,8 @@ const server = http.createServer(app);
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000',
   'http://localhost:3000',
-  /\.vercel\.app$/,   // any *.vercel.app subdomain
+  'https://chatapp-self-iota.vercel.app',
+  /\.vercel\.app$/,
 ];
 
 const io = new Server(server, {
