@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { useAuth } from '../context/AuthContext';
 import { ChatProvider } from '../context/ChatContext';
 import AuthScreen   from '../screens/AuthScreen';
@@ -9,7 +9,7 @@ import ChatScreen   from '../screens/ChatScreen';
 import OnlineScreen from '../screens/OnlineScreen';
 import { COLORS }   from '../utils/colors';
 
-const Stack = createNativeStackNavigator();
+const Stack = createStackNavigator();
 
 const AuthStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
@@ -24,9 +24,7 @@ const AppStack = () => (
         headerStyle:      { backgroundColor: COLORS.bgSecondary },
         headerTintColor:  COLORS.textPrimary,
         headerTitleStyle: { fontWeight: '700', fontSize: 16 },
-        headerShadowVisible: true,
-        contentStyle:     { backgroundColor: COLORS.bg },
-        animation:        'slide_from_right',
+        cardStyle:        { backgroundColor: COLORS.bg },
       }}
     >
       <Stack.Screen
@@ -37,9 +35,7 @@ const AppStack = () => (
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={({ route }) => ({
-          title: `# ${route.params?.room}`,
-        })}
+        options={({ route }) => ({ title: `# ${route.params?.room}` })}
       />
       <Stack.Screen
         name="Online"
