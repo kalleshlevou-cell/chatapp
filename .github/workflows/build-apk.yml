@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Node.js 22 (LTS, not deprecated) ───────────────
+      # ── 2. Node.js 22 ──────────────────────────────────────
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -36,7 +36,19 @@ jobs:
         working-directory: mobile
         run: npm install
 
-      # ── 5. Cache Gradle ────────────────────────────────────
+      # ── 5. Download gradle-wrapper.jar ─────────────────────
+      #       This jar is a binary and cannot be stored in git.
+      #       We download it directly from the official Gradle repo.
+      - name: Download gradle-wrapper.jar
+        run: |
+          mkdir -p mobile/android/gradle/wrapper
+          curl -fsSL \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.3.0/gradle/wrapper/gradle-wrapper.jar" \
+            -o mobile/android/gradle/wrapper/gradle-wrapper.jar
+          echo "✅ gradle-wrapper.jar downloaded"
+          ls -lh mobile/android/gradle/wrapper/
+
+      # ── 6. Cache Gradle ────────────────────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -47,12 +59,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # ── 6. Make gradlew executable ─────────────────────────
+      # ── 7. Make gradlew executable ─────────────────────────
       - name: Make gradlew executable
         working-directory: mobile/android
         run: chmod +x gradlew
 
-      # ── 7. Generate debug keystore ─────────────────────────
+      # ── 8. Generate debug keystore ─────────────────────────
       - name: Generate debug keystore
         working-directory: mobile/android/app
         run: |
@@ -67,14 +79,12 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      # ── 8. Build APK ───────────────────────────────────────
+      # ── 9. Build APK ───────────────────────────────────────
       - name: Build Debug APK
         working-directory: mobile/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
-        env:
-          JAVA_HOME: ${{ env.JAVA_HOME }}
 
-      # ── 9. Upload APK artifact ─────────────────────────────
+      # ── 10. Upload APK artifact ────────────────────────────
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
@@ -82,7 +92,7 @@ jobs:
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      # ── 10. Show APK info ──────────────────────────────────
+      # ── 11. Show APK info ──────────────────────────────────
       - name: Show APK size
         run: |
           APK_PATH="mobile/android/app/build/outputs/apk/debug/app-debug.apk"
