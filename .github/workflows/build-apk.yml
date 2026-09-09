@@ -3,9 +3,6 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-    paths:
-      - 'mobile/**'
-      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
 jobs:
@@ -31,38 +28,57 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 4. Install npm dependencies ────────────────────────
-      - name: Install npm dependencies
-        working-directory: mobile
-        run: npm install
-
-      # ── 5. Download gradle-wrapper.jar ─────────────────────
-      - name: Download gradle-wrapper.jar
+      # ── 4. Scaffold a clean RN 0.73.2 project ──────────────
+      #   We init a brand-new RN project, then overlay our source files on top.
+      #   This guarantees a complete, working Android folder.
+      - name: Scaffold React Native project
         run: |
-          mkdir -p mobile/android/gradle/wrapper
-          curl -fsSL \
-            "https://raw.githubusercontent.com/gradle/gradle/v8.3.0/gradle/wrapper/gradle-wrapper.jar" \
-            -o mobile/android/gradle/wrapper/gradle-wrapper.jar
-          echo "gradle-wrapper.jar size: $(du -sh mobile/android/gradle/wrapper/gradle-wrapper.jar)"
+          npx react-native@0.73.2 init ChatAppBuild \
+            --title "ChatApp" \
+            --skip-install \
+            --skip-git-init \
+            --version 0.73.2
+          echo "✅ Scaffold done"
 
-      # ── 6. Cache Gradle ────────────────────────────────────
+      # ── 5. Copy our source into the scaffold ───────────────
+      - name: Overlay our source files
+        run: |
+          # Replace App.js and src/
+          cp mobile/App.js       ChatAppBuild/App.js
+          cp mobile/index.js     ChatAppBuild/index.js
+          cp mobile/app.json     ChatAppBuild/app.json
+          rm -rf ChatAppBuild/src
+          cp -r  mobile/src      ChatAppBuild/src
+          echo "✅ Source overlay done"
+
+      # ── 6. Install our dependencies into the scaffold ──────
+      - name: Install dependencies
+        working-directory: ChatAppBuild
+        run: |
+          # Add our extra packages to the scaffolded package.json
+          npm install \
+            @react-native-async-storage/async-storage@^1.21.0 \
+            @react-navigation/native@^6.1.9 \
+            @react-navigation/native-stack@^6.9.17 \
+            axios@^1.6.2 \
+            socket.io-client@^4.6.1 \
+            react-native-safe-area-context@^4.8.2 \
+            react-native-screens@^3.29.0
+          echo "✅ Dependencies installed"
+
+      # ── 7. Cache Gradle ────────────────────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('mobile/android/**/*.gradle*') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('ChatAppBuild/android/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
-
-      # ── 7. Make gradlew executable ─────────────────────────
-      - name: Make gradlew executable
-        working-directory: mobile/android
-        run: chmod +x gradlew
 
       # ── 8. Generate debug keystore ─────────────────────────
       - name: Generate debug keystore
-        working-directory: mobile/android/app
+        working-directory: ChatAppBuild/android/app
         run: |
           keytool -genkeypair \
             -keystore debug.keystore \
@@ -74,35 +90,34 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US" \
             -noprompt
-          echo "Keystore created: $(ls -lh debug.keystore)"
+          echo "✅ Keystore: $(ls -lh debug.keystore)"
 
-      # ── 9. Print build files for debugging ─────────────────
-      - name: Show build files
-        run: |
-          echo "=== app/build.gradle ==="
-          cat mobile/android/app/build.gradle
-          echo "=== build.gradle ==="
-          cat mobile/android/build.gradle
-          echo "=== settings.gradle ==="
-          cat mobile/android/settings.gradle
-          echo "=== node_modules/@react-native/gradle-plugin exists? ==="
-          ls mobile/node_modules/@react-native/gradle-plugin/ | head -10
+      # ── 9. Make gradlew executable ─────────────────────────
+      - name: Make gradlew executable
+        working-directory: ChatAppBuild/android
+        run: chmod +x gradlew
 
       # ── 10. Build APK ──────────────────────────────────────
       - name: Build Debug APK
-        working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon --info 2>&1 | tail -100
+        working-directory: ChatAppBuild/android
+        run: ./gradlew assembleDebug --no-daemon
 
       # ── 11. Upload APK ─────────────────────────────────────
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ChatApp-Debug-APK
-          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       # ── 12. APK info ───────────────────────────────────────
       - name: Show APK info
         run: |
-          APK="mobile/android/app/build/outputs/apk/debug/app-debug.apk"
-          [ -f "$APK" ] && echo "✅ APK: $(du -sh $APK)" || (echo "❌ APK not found" && exit 1)
+          APK="ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ -f "$APK" ]; then
+            echo "✅ APK built successfully!"
+            echo "📦 Size: $(du -sh $APK | cut -f1)"
+          else
+            echo "❌ APK not found"
+            exit 1
+          fi
