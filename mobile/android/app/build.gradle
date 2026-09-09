@@ -3,7 +3,14 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 react {
-    // React Native configuration
+    // The root of your project, i.e. where "package.json" lives.
+    root = file("../../")
+    // The folder where the react-native NPM package is.
+    reactNativeDir = file("../../node_modules/react-native")
+    // The folder where the react-native Codegen package is.
+    codegenDir = file("../../node_modules/@react-native/codegen")
+    // The cli.js file which is the React Native CLI entrypoint.
+    cliFile = file("../../node_modules/react-native/cli.js")
 }
 
 android {
@@ -28,6 +35,12 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile file('release.keystore')
+            storePassword System.getenv("KEYSTORE_PASSWORD") ?: 'android'
+            keyAlias System.getenv("KEY_ALIAS") ?: 'chatapp'
+            keyPassword System.getenv("KEY_PASSWORD") ?: 'android'
+        }
     }
 
     buildTypes {
@@ -35,9 +48,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
+            signingConfig signingConfigs.debug   // use debug key for now (CI)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-            signingConfig signingConfigs.debug
         }
     }
 }
