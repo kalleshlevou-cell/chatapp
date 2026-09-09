@@ -7,10 +7,6 @@ pluginManagement {
     }
 }
 
-plugins {
-    id("de.fayard.refreshVersions") version "0.51.0" apply false
-}
-
 rootProject.name = 'ChatAppMobile'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
