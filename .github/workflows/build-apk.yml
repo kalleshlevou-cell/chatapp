@@ -56,14 +56,15 @@ jobs:
         working-directory: ChatAppBuild
         run: |
           # Add our extra packages to the scaffolded package.json
+          # Pin versions compatible with RN 0.73.2
           npm install \
-            @react-native-async-storage/async-storage@^1.21.0 \
-            @react-navigation/native@^6.1.9 \
-            @react-navigation/native-stack@^6.9.17 \
-            axios@^1.6.2 \
-            socket.io-client@^4.6.1 \
-            react-native-safe-area-context@^4.8.2 \
-            react-native-screens@^3.29.0
+            @react-native-async-storage/async-storage@1.21.0 \
+            @react-navigation/native@6.1.9 \
+            @react-navigation/native-stack@6.9.17 \
+            axios@1.6.2 \
+            socket.io-client@4.6.1 \
+            react-native-safe-area-context@4.7.4 \
+            react-native-screens@3.25.0
           echo "✅ Dependencies installed"
 
       # ── 7. Cache Gradle ────────────────────────────────────
