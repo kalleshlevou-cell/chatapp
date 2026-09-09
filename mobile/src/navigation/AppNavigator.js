@@ -3,11 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { ChatProvider } from '../context/ChatContext';
-import AuthScreen     from '../screens/AuthScreen';
-import RoomsScreen    from '../screens/RoomsScreen';
-import ChatScreen     from '../screens/ChatScreen';
-import OnlineScreen   from '../screens/OnlineScreen';
-import { COLORS }     from '../utils/colors';
+import AuthScreen   from '../screens/AuthScreen';
+import RoomsScreen  from '../screens/RoomsScreen';
+import ChatScreen   from '../screens/ChatScreen';
+import OnlineScreen from '../screens/OnlineScreen';
+import { COLORS }   from '../utils/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,24 +23,28 @@ const AppStack = () => (
       screenOptions={{
         headerStyle:      { backgroundColor: COLORS.bgSecondary },
         headerTintColor:  COLORS.textPrimary,
-        headerTitleStyle: { fontWeight: '700' },
+        headerTitleStyle: { fontWeight: '700', fontSize: 16 },
+        headerShadowVisible: true,
         contentStyle:     { backgroundColor: COLORS.bg },
+        animation:        'slide_from_right',
       }}
     >
       <Stack.Screen
         name="Rooms"
         component={RoomsScreen}
-        options={{ title: '💬 ChatApp' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Chat"
         component={ChatScreen}
-        options={({ route }) => ({ title: `#${route.params?.room}` })}
+        options={({ route }) => ({
+          title: `# ${route.params?.room}`,
+        })}
       />
       <Stack.Screen
         name="Online"
         component={OnlineScreen}
-        options={{ title: 'Online Users' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   </ChatProvider>

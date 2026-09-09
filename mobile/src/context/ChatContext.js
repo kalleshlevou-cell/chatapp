@@ -1,24 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { initSocket, disconnectSocket, getSocket } from '../socket/socket';
+import { initSocket, disconnectSocket, getSocket, API_URL } from '../socket/socket';
 import { useAuth } from './AuthContext';
-import { API_URL } from '../socket/socket';
 
 const ChatContext = createContext(null);
 
 export const ChatProvider = ({ children }) => {
   const { user, token } = useAuth();
-  const [connected, setConnected]   = useState(false);
-  const [rooms, setRooms]           = useState([]);
+  const [connected, setConnected]     = useState(false);
+  const [rooms, setRooms]             = useState([]);
   const [currentRoom, setCurrentRoom] = useState(null);
-  const [messages, setMessages]     = useState([]);
+  const [messages, setMessages]       = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!user || !token) return;
-
     const s = initSocket(token);
 
     s.on('connect',    () => setConnected(true));

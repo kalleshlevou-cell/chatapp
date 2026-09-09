@@ -6,8 +6,8 @@ import { API_URL } from '../socket/socket';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser]     = useState(null);
-  const [token, setToken]   = useState(null);
+  const [user, setUser]       = useState(null);
+  const [token, setToken]     = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
