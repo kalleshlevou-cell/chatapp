@@ -76,21 +76,23 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('ChatAppBuild/android/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 8. Generate debug keystore ─────────────────────────
-      - name: Generate debug keystore
+      # ── 8. Verify debug keystore (RN scaffold includes one already) ───
+      - name: Verify debug keystore
         working-directory: ChatAppBuild/android/app
         run: |
-          keytool -genkeypair \
-            -keystore debug.keystore \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US" \
-            -noprompt
-          echo "✅ Keystore: $(ls -lh debug.keystore)"
+          if [ -f debug.keystore ]; then
+            echo "✅ debug.keystore already exists (from RN scaffold)"
+            ls -lh debug.keystore
+          else
+            echo "⚠️ No keystore found, generating..."
+            keytool -genkeypair \
+              -keystore debug.keystore \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US" -noprompt
+            echo "✅ Keystore generated"
+          fi
 
       # ── 9. Make gradlew executable ─────────────────────────
       - name: Make gradlew executable
