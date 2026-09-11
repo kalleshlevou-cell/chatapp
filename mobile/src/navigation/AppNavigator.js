@@ -27,21 +27,9 @@ const AppStack = () => (
         cardStyle:        { backgroundColor: COLORS.bg },
       }}
     >
-      <Stack.Screen
-        name="Rooms"
-        component={RoomsScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Chat"
-        component={ChatScreen}
-        options={({ route }) => ({ title: `# ${route.params?.room}` })}
-      />
-      <Stack.Screen
-        name="Online"
-        component={OnlineScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="Rooms"  component={RoomsScreen}  options={{ headerShown: false }} />
+      <Stack.Screen name="Chat"   component={ChatScreen}   options={({ route }) => ({ title: `# ${route.params?.room}` })} />
+      <Stack.Screen name="Online" component={OnlineScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   </ChatProvider>
 );

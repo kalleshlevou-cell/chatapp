@@ -13,65 +13,27 @@ export const ChatProvider = ({ children }) => {
   const [messages, setMessages]       = useState([]);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
-  const typingTimeoutRef = useRef(null);
+  const typingRef = useRef(null);
 
   useEffect(() => {
     if (!user || !token) return;
     const s = initSocket(token);
-
-    s.on('connect',    () => setConnected(true));
-    s.on('disconnect', () => setConnected(false));
-
-    s.on('chatHistory', ({ messages: hist }) => setMessages(hist));
-
-    s.on('chatMessage', (msg) =>
-      setMessages((prev) => [...prev, msg])
-    );
-
-    s.on('systemMessage', (msg) =>
-      setMessages((prev) => [
-        ...prev,
-        { ...msg, _id: String(Date.now()), messageType: 'system', sender: 'System' },
-      ])
-    );
-
-    s.on('onlineUsers', ({ users }) => setOnlineUsers(users));
-
-    s.on('typing', ({ username, isTyping }) =>
-      setTypingUsers((prev) =>
-        isTyping
-          ? [...new Set([...prev, username])]
-          : prev.filter((u) => u !== username)
-      )
-    );
-
-    return () => {
-      disconnectSocket();
-      setConnected(false);
-    };
+    s.on('connect',       ()              => setConnected(true));
+    s.on('disconnect',    ()              => setConnected(false));
+    s.on('chatHistory',   ({ messages: h }) => setMessages(h));
+    s.on('chatMessage',   (msg)           => setMessages(p => [...p, msg]));
+    s.on('systemMessage', (msg)           => setMessages(p => [...p, { ...msg, _id: String(Date.now()), messageType: 'system', sender: 'System' }]));
+    s.on('onlineUsers',   ({ users })     => setOnlineUsers(users));
+    s.on('typing',        ({ username, isTyping }) => setTypingUsers(p => isTyping ? [...new Set([...p, username])] : p.filter(u => u !== username)));
+    return () => { disconnectSocket(); setConnected(false); };
   }, [user, token]);
 
-  const fetchRooms = useCallback(async () => {
-    try {
-      const res = await axios.get(`${API_URL}/rooms`);
-      setRooms(res.data);
-    } catch (e) {
-      console.error('fetchRooms error', e);
-    }
-  }, []);
-
-  const createRoom = useCallback(async (name, description = '') => {
-    const res = await axios.post(`${API_URL}/rooms`, { name, description });
-    setRooms((prev) => [res.data, ...prev]);
-    return res.data;
-  }, []);
+  const fetchRooms  = useCallback(async () => { try { const r = await axios.get(`${API_URL}/rooms`); setRooms(r.data); } catch(e){} }, []);
+  const createRoom  = useCallback(async (name, desc = '') => { const r = await axios.post(`${API_URL}/rooms`, { name, description: desc }); setRooms(p => [r.data, ...p]); return r.data; }, []);
 
   const joinRoom = useCallback((roomName) => {
-    const s = getSocket();
-    if (!s) return;
-    setMessages([]);
-    setOnlineUsers([]);
-    setTypingUsers([]);
+    const s = getSocket(); if (!s) return;
+    setMessages([]); setOnlineUsers([]); setTypingUsers([]);
     setCurrentRoom(roomName);
     s.emit('joinRoom', { room: roomName });
   }, []);
@@ -83,23 +45,16 @@ export const ChatProvider = ({ children }) => {
   }, [currentRoom]);
 
   const emitTyping = useCallback((isTyping) => {
-    const s = getSocket();
-    if (!s || !currentRoom) return;
+    const s = getSocket(); if (!s || !currentRoom) return;
     s.emit('typing', { room: currentRoom, isTyping });
     if (isTyping) {
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = setTimeout(() => {
-        s.emit('typing', { room: currentRoom, isTyping: false });
-      }, 3000);
+      if (typingRef.current) clearTimeout(typingRef.current);
+      typingRef.current = setTimeout(() => s.emit('typing', { room: currentRoom, isTyping: false }), 3000);
     }
   }, [currentRoom]);
 
   return (
-    <ChatContext.Provider value={{
-      connected, rooms, currentRoom, messages,
-      onlineUsers, typingUsers,
-      fetchRooms, createRoom, joinRoom, sendMessage, emitTyping,
-    }}>
+    <ChatContext.Provider value={{ connected, rooms, currentRoom, messages, onlineUsers, typingUsers, fetchRooms, createRoom, joinRoom, sendMessage, emitTyping }}>
       {children}
     </ChatContext.Provider>
   );

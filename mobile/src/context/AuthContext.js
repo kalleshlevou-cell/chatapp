@@ -10,9 +10,7 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken]     = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    restoreSession();
-  }, []);
+  useEffect(() => { restoreSession(); }, []);
 
   const restoreSession = async () => {
     try {
@@ -23,43 +21,24 @@ export const AuthProvider = ({ children }) => {
         setToken(stored);
         setUser(res.data);
       }
-    } catch {
-      await AsyncStorage.removeItem('chat_token');
-    } finally {
-      setLoading(false);
-    }
+    } catch { await AsyncStorage.removeItem('chat_token'); }
+    finally { setLoading(false); }
   };
 
   const saveAuth = async ({ token: t, user: u }) => {
     await AsyncStorage.setItem('chat_token', t);
     axios.defaults.headers.common['Authorization'] = `Bearer ${t}`;
-    setToken(t);
-    setUser(u);
+    setToken(t); setUser(u);
   };
 
-  const register = async (username, email, password) => {
-    const res = await axios.post(`${API_URL}/auth/register`, { username, email, password });
-    await saveAuth(res.data);
-    return res.data;
-  };
-
-  const login = async (email, password) => {
-    const res = await axios.post(`${API_URL}/auth/login`, { email, password });
-    await saveAuth(res.data);
-    return res.data;
-  };
-
-  const guestLogin = async (username) => {
-    const res = await axios.post(`${API_URL}/auth/guest`, { username });
-    await saveAuth(res.data);
-    return res.data;
-  };
+  const register    = async (username, email, password) => { const r = await axios.post(`${API_URL}/auth/register`, { username, email, password }); await saveAuth(r.data); return r.data; };
+  const login       = async (email, password)           => { const r = await axios.post(`${API_URL}/auth/login`,    { email, password });           await saveAuth(r.data); return r.data; };
+  const guestLogin  = async (username)                  => { const r = await axios.post(`${API_URL}/auth/guest`,    { username });                   await saveAuth(r.data); return r.data; };
 
   const logout = async () => {
     await AsyncStorage.removeItem('chat_token');
     delete axios.defaults.headers.common['Authorization'];
-    setToken(null);
-    setUser(null);
+    setToken(null); setUser(null);
   };
 
   return (

@@ -32,107 +32,74 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # ── 4. Scaffold clean RN 0.73.2 project ───────────────
-      - name: Scaffold React Native project
-        run: |
-          npx --yes react-native@0.73.2 init ChatAppBuild \
-            --title "ChatApp" \
-            --skip-install \
-            --skip-git-init \
-            --version 0.73.2
-          echo "✅ Scaffold done"
+      # ── 4. Install dependencies ────────────────────────────
+      - name: Install npm dependencies
+        working-directory: mobile
+        run: npm install
 
-      # ── 5. Install ALL dependencies fresh ─────────────────
-      - name: Install all dependencies
-        working-directory: ChatAppBuild
-        run: |
-          npm install
-          npm install \
-            @react-native-async-storage/async-storage@1.21.0 \
-            @react-navigation/native@6.1.9 \
-            @react-navigation/stack@6.3.20 \
-            axios@1.6.2 \
-            socket.io-client@4.6.1 \
-            react-native-gesture-handler@2.14.0 \
-            react-native-safe-area-context@4.7.4 \
-            react-native-screens@3.27.0 \
-            react-native-reanimated@3.6.1
-          echo "✅ All dependencies installed"
-
-      # ── 6. Copy our source files ───────────────────────────
-      - name: Copy source files
-        run: |
-          cp mobile/App.js    ChatAppBuild/App.js
-          cp mobile/index.js  ChatAppBuild/index.js
-          cp mobile/app.json  ChatAppBuild/app.json
-          rm -rf              ChatAppBuild/src
-          cp -r mobile/src    ChatAppBuild/src
-          echo "✅ Source files copied"
-          echo "Files in src:"
-          find ChatAppBuild/src -name "*.js" | head -30
-
-      # ── 7. Bundle JS ───────────────────────────────────────
-      - name: Bundle JavaScript
-        working-directory: ChatAppBuild
-        run: |
-          mkdir -p android/app/src/main/assets
-          yarn react-native bundle \
-            --platform android \
-            --dev false \
-            --entry-file index.js \
-            --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
-          echo "Bundle size: $(du -sh android/app/src/main/assets/index.android.bundle)"
-
-      # ── 8. Cache Gradle ────────────────────────────────────
+      # ── 5. Cache Gradle ────────────────────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('ChatAppBuild/android/**/*.gradle*') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('mobile/android/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 9. Make gradlew executable ─────────────────────────
+      # ── 6. Make gradlew executable ─────────────────────────
       - name: Make gradlew executable
-        working-directory: ChatAppBuild/android
+        working-directory: mobile/android
         run: chmod +x gradlew
 
-      # ── 10. Build APK ──────────────────────────────────────
-      - name: Build Release APK (signed with debug key)
-        working-directory: ChatAppBuild/android
+      # ── 7. Bundle JavaScript ───────────────────────────────
+      - name: Bundle JavaScript for Android
+        working-directory: mobile
         run: |
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -50
-          echo "Exit: $?"
+          mkdir -p android/app/src/main/assets
+          node node_modules/.bin/react-native bundle \
+            --platform android \
+            --dev false \
+            --entry-file index.js \
+            --bundle-output android/app/src/main/assets/index.android.bundle \
+            --assets-dest android/app/src/main/res
+          echo "✅ Bundle size: $(du -sh android/app/src/main/assets/index.android.bundle | cut -f1)"
 
-      # ── 11. Find APK ───────────────────────────────────────
-      - name: Find APK
-        id: find_apk
+      # ── 8. Build APK ───────────────────────────────────────
+      - name: Build Debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
+      # ── 9. Verify APK has JS bundle ────────────────────────
+      - name: Verify APK contains JS bundle
         run: |
-          find ChatAppBuild/android -name "*.apk" 2>/dev/null
-          APK=$(find ChatAppBuild/android -name "*.apk" | head -1)
-          echo "apk_path=$APK" >> $GITHUB_OUTPUT
-          echo "APK found at: $APK"
-          echo "Size: $(du -sh $APK | cut -f1)"
-
-          # Verify JS bundle is inside APK
+          APK=$(find mobile/android -name "app-debug.apk" | head -1)
+          echo "APK: $APK  |  Size: $(du -sh $APK | cut -f1)"
           if unzip -l "$APK" | grep -q "index.android.bundle"; then
-            echo "✅ JS bundle IS inside APK"
+            echo "✅ JS bundle is inside the APK"
           else
-            echo "❌ JS bundle NOT in APK"
-            unzip -l "$APK" | grep -i asset || true
+            echo "❌ JS bundle NOT found in APK — listing assets:"
+            unzip -l "$APK" | grep -i asset || echo "No assets"
+            exit 1
           fi
 
-      # ── 12. Upload artifact ────────────────────────────────
+      # ── 10. Rename APK ─────────────────────────────────────
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          APK=$(find mobile/android -name "app-debug.apk" | head -1)
+          cp "$APK" output/ChatApp-debug.apk
+          echo "📦 Final APK: $(du -sh output/ChatApp-debug.apk | cut -f1)"
+
+      # ── 11. Upload artifact ────────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ChatApp-Debug-APK
-          path: ${{ steps.find_apk.outputs.apk_path }}
+          path: output/ChatApp-debug.apk
           retention-days: 30
 
-      # ── 13. GitHub Release ─────────────────────────────────
+      # ── 12. GitHub Release ─────────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -142,12 +109,13 @@ jobs:
             ## 📱 ChatApp Android APK
 
             ### Install
-            1. Download APK below
-            2. On phone: Settings → Security → Unknown Sources → Enable
+            1. Download `ChatApp-debug.apk` below
+            2. Phone: Settings → Security → Install Unknown Apps → Enable
             3. Open APK → Install
 
-            ### Backend: https://chatapp-hqgv.onrender.com
-          files: ${{ steps.find_apk.outputs.apk_path }}
+            ### Live Backend
+            🌐 https://chatapp-hqgv.onrender.com
+          files: output/ChatApp-debug.apk
           draft: false
           prerelease: false
         env:
