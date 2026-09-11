@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write   # needed to create GitHub Releases
+
 jobs:
   build:
     name: Build Debug APK
@@ -39,8 +42,6 @@ jobs:
           echo "✅ Scaffold done"
 
       # ── 5. Install dependencies ────────────────────────────
-      #   Use @react-navigation/stack (JS-only) to avoid
-      #   react-native-screens native compilation issues on CI.
       - name: Install dependencies
         working-directory: ChatAppBuild
         run: |
@@ -86,20 +87,52 @@ jobs:
         working-directory: ChatAppBuild/android
         run: ./gradlew assembleDebug --no-daemon
 
-      # ── 10. Upload APK ─────────────────────────────────────
+      # ── 10. Rename APK ─────────────────────────────────────
+      - name: Rename APK
+        run: |
+          mkdir -p output
+          cp ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk \
+             output/ChatApp-v1.0-debug.apk
+          echo "✅ APK size: $(du -sh output/ChatApp-v1.0-debug.apk | cut -f1)"
+
+      # ── 11. Upload APK as artifact ─────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ChatApp-Debug-APK
-          path: ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk
+          path: output/ChatApp-v1.0-debug.apk
           retention-days: 30
 
-      # ── 11. APK info ───────────────────────────────────────
-      - name: Show APK info
-        run: |
-          APK="ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk"
-          if [ -f "$APK" ]; then
-            echo "✅ APK built successfully! Size: $(du -sh $APK | cut -f1)"
-          else
-            echo "❌ APK not found"; exit 1
-          fi
+      # ── 12. Create GitHub Release with APK ─────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0-${{ github.run_number }}
+          name: "ChatApp v1.0 (Build ${{ github.run_number }})"
+          body: |
+            ## 📱 ChatApp Android APK
+
+            **Build:** ${{ github.run_number }}
+            **Commit:** ${{ github.sha }}
+
+            ### Install Instructions
+            1. Download `ChatApp-v1.0-debug.apk` below
+            2. Transfer to your Android phone
+            3. Enable **Settings → Security → Install Unknown Apps**
+            4. Tap the APK to install
+
+            ### Features
+            - ✅ Real-time chat with Socket.io
+            - ✅ Multiple chat rooms
+            - ✅ Online users list
+            - ✅ Typing indicator
+            - ✅ Chat history (MongoDB)
+            - ✅ Login / Register / Guest mode
+
+            ### Backend
+            🌐 https://chatapp-hqgv.onrender.com
+          files: output/ChatApp-v1.0-debug.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
