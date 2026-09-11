@@ -40,6 +40,7 @@ jobs:
             --skip-git-init \
             --version 0.73.2
           echo "✅ Scaffold done"
+          ls ChatAppBuild/
 
       # ── 5. Install dependencies ────────────────────────────
       - name: Install dependencies
@@ -55,32 +56,46 @@ jobs:
             react-native-safe-area-context@4.7.4 \
             react-native-screens@3.27.0 \
             react-native-reanimated@3.6.1
-          echo "✅ Dependencies installed"
+          echo "✅ node_modules installed"
 
       # ── 6. Copy our source files ───────────────────────────
       - name: Copy source files
         run: |
-          cp mobile/App.js    ChatAppBuild/App.js
-          cp mobile/index.js  ChatAppBuild/index.js
-          cp mobile/app.json  ChatAppBuild/app.json
-          rm -rf              ChatAppBuild/src
-          cp -r mobile/src    ChatAppBuild/src
-          echo "✅ Source files copied"
+          cp -v mobile/App.js    ChatAppBuild/App.js
+          cp -v mobile/index.js  ChatAppBuild/index.js
+          cp -v mobile/app.json  ChatAppBuild/app.json
+          rm -rf                 ChatAppBuild/src
+          cp -rv mobile/src      ChatAppBuild/src
+          echo "✅ Source files:"
+          find ChatAppBuild/src -name "*.js" | head -20
 
-      # ── 7. Bundle JavaScript ── THIS WAS MISSING ──────────
-      - name: Bundle JS for Android
+      # ── 7. Create assets folder ────────────────────────────
+      - name: Create assets folder
+        run: |
+          mkdir -p ChatAppBuild/android/app/src/main/assets
+          echo "✅ Assets folder ready"
+
+      # ── 8. Bundle JavaScript ───────────────────────────────
+      - name: Bundle JavaScript for Android
         working-directory: ChatAppBuild
         run: |
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle \
+          node node_modules/react-native/cli.js bundle \
             --platform android \
             --dev false \
             --entry-file index.js \
             --bundle-output android/app/src/main/assets/index.android.bundle \
-            --assets-dest android/app/src/main/res
-          echo "✅ JS bundle: $(du -sh android/app/src/main/assets/index.android.bundle | cut -f1)"
+            --assets-dest android/app/src/main/res \
+            --reset-cache
+          echo "✅ Bundle created"
+          ls -lh android/app/src/main/assets/
+          if [ ! -f android/app/src/main/assets/index.android.bundle ]; then
+            echo "❌ BUNDLE NOT FOUND - failing build"
+            exit 1
+          fi
+          BUNDLE_SIZE=$(du -sh android/app/src/main/assets/index.android.bundle | cut -f1)
+          echo "📦 Bundle size: $BUNDLE_SIZE"
 
-      # ── 8. Cache Gradle ────────────────────────────────────
+      # ── 9. Cache Gradle ────────────────────────────────────
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -90,25 +105,44 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('ChatAppBuild/android/**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # ── 9. Make gradlew executable ─────────────────────────
+      # ── 10. Make gradlew executable ────────────────────────
       - name: Make gradlew executable
         working-directory: ChatAppBuild/android
         run: chmod +x gradlew
 
-      # ── 10. Build APK ──────────────────────────────────────
+      # ── 11. Build APK ──────────────────────────────────────
       - name: Build Debug APK
         working-directory: ChatAppBuild/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          ./gradlew assembleDebug --no-daemon
+          echo "✅ Gradle build done"
+          ls -lh app/build/outputs/apk/debug/ || echo "⚠️ No APK output found"
 
-      # ── 11. Rename APK ─────────────────────────────────────
+      # ── 12. Verify APK has bundle ──────────────────────────
+      - name: Verify APK contains JS bundle
+        run: |
+          APK="ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$APK" ]; then
+            echo "❌ APK file not found!"; exit 1
+          fi
+          # Check APK contains the bundle (APK is a zip)
+          if unzip -l "$APK" | grep -q "index.android.bundle"; then
+            echo "✅ index.android.bundle IS inside the APK"
+          else
+            echo "❌ index.android.bundle NOT found in APK!"
+            unzip -l "$APK" | grep -i "assets" || echo "No assets found"
+            exit 1
+          fi
+          echo "📦 APK size: $(du -sh $APK | cut -f1)"
+
+      # ── 13. Rename APK ─────────────────────────────────────
       - name: Rename APK
         run: |
           mkdir -p output
           cp ChatAppBuild/android/app/build/outputs/apk/debug/app-debug.apk \
              output/ChatApp-v1.0-debug.apk
-          echo "✅ APK size: $(du -sh output/ChatApp-v1.0-debug.apk | cut -f1)"
 
-      # ── 12. Upload APK as artifact ─────────────────────────
+      # ── 14. Upload APK artifact ────────────────────────────
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
@@ -116,14 +150,14 @@ jobs:
           path: output/ChatApp-v1.0-debug.apk
           retention-days: 30
 
-      # ── 13. Create GitHub Release ──────────────────────────
+      # ── 15. Create GitHub Release ──────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0-${{ github.run_number }}
           name: "ChatApp v1.0 (Build ${{ github.run_number }})"
           body: |
-            ## 📱 ChatApp Android APK
+            ## 📱 ChatApp Android APK — with JS Bundle fix
 
             **Build:** ${{ github.run_number }}
             **Commit:** ${{ github.sha }}
